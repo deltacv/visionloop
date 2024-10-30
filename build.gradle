@@ -1,0 +1,39 @@
+plugins {
+    id 'java-library'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(11)
+    }
+}
+
+group = 'com.github.deltacv'
+version = '1.0.0'
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+
+    google()
+
+    maven { url "https://jitpack.io" }
+    maven { url 'https://maven.openimaj.org/' }
+    maven { url 'https://maven.ecs.soton.ac.uk/content/repositories/thirdparty/' }
+    maven { url "https://maven.pkg.jetbrains.space/public/p/compose/dev" }
+}
+
+dependencies {
+    api 'com.github.deltacv.EOCV-Sim:Vision:3.8.1'
+    api 'com.github.deltacv.EOCV-Sim:Common:3.8.1'
+
+    api 'com.github.deltacv:steve:1.1.1'
+    api 'com.github.deltacv.steve:backend-openpnp:1.1.1'
+
+    testImplementation platform('org.junit:junit-bom:5.10.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+}
+
+test {
+    useJUnitPlatform()
+}
