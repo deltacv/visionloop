@@ -42,6 +42,8 @@ public class VisionLoop implements Runnable, AutoCloseable {
     private boolean running = false;
     private boolean closed = false;
 
+    private boolean isAsync = false;
+
     private final Object loopLock = new Object();
 
     private final PipelineStatisticsCalculator statisticsCalculator = new PipelineStatisticsCalculator();
@@ -131,6 +133,9 @@ public class VisionLoop implements Runnable, AutoCloseable {
     /**
      * Closes the VisionLoop, releasing any resources held by receivers and input sources.
      * After closing, the loop cannot be restarted again.
+     * This method is inherited from the AutoCloseable interface.
+     * You can also use try-with-resources to automatically close the loop.
+     * @throws IllegalStateException if the loop is not running
      */
     @Override
     public void close() {
@@ -151,15 +156,18 @@ public class VisionLoop implements Runnable, AutoCloseable {
 
     /**
      * Runs the loop continuously on the current thread until the specified condition becomes false.
-     * @param until a BooleanSupplier that determines when the loop should stop
+     * @param condition a BooleanSupplier that determines when the loop should stop
      */
-    public void runBlocking(BooleanSupplier until) {
-        if(running) {
+    public void runBlockingWhile(BooleanSupplier condition) {
+        if(isAsync) {
+            throw new IllegalStateException("Cannot run a blocking loop with a VisionLoop that has been converted to an AsyncVisionLoop");
+        }
+        if(hasBeenRunning) {
             throw new IllegalStateException("Cannot run a blocking loop while already running a loop");
         }
 
         try(this) {
-            while(until.getAsBoolean()) {
+            while(condition.getAsBoolean()) {
                 run();
             }
         }
@@ -169,48 +177,34 @@ public class VisionLoop implements Runnable, AutoCloseable {
      * Runs the loop continuously until interrupted.
      */
     public void runBlocking() {
-        runBlocking(() -> true);
+        runBlockingWhile(() -> true);
+    }
+
+
+    /**
+     * Converts this VisionLoop to an AsyncVisionLoop with the specified thread name.
+     * This allows the VisionLoop to run asynchronously on a separate thread.
+     * Call {@link AsyncVisionLoop#run()} to start the loop.
+     * @param threadName the name of the thread
+     * @return an AsyncVisionLoop instance for running the VisionLoop asynchronously
+     */
+    public AsyncVisionLoop toAsync(String threadName) {
+        if(hasBeenRunning) {
+            throw new IllegalStateException("Cannot convert a VisionLoop to an AsyncVisionLoop after it has been run");
+        }
+
+        isAsync = true;
+        return new AsyncVisionLoop(this, threadName);
     }
 
     /**
-     * Runs the loop asynchronously on a new thread with a specified stopping condition.
-     *
-     * @param condition a BooleanSupplier to determine when the async loop should stop
-     * @return an AsyncVisionLoopRunner managing the asynchronous loop
+     * Converts this VisionLoop to an AsyncVisionLoop with a unique thread name.
+     * This allows the VisionLoop to run asynchronously on a separate thread.
+     * Call {@link AsyncVisionLoop#run()} to start the loop.
+     * @return an AsyncVisionLoop instance for running the VisionLoop asynchronously
      */
-    public AsyncVisionLoopRunner runAsyncWhile(BooleanSupplier condition) {
-        return runAsyncWhile(Integer.toHexString(hashCode()), condition);
-    }
-    /**
-     * Runs the loop asynchronously on a new thread with a specified stopping condition and thread name.
-     *
-     * @param threadName the name of the thread for the async loop
-     * @param condition the stopping condition
-     * @return an AsyncVisionLoopRunner managing the asynchronous loop
-     */
-    public AsyncVisionLoopRunner runAsyncWhile(String threadName, BooleanSupplier condition) {
-        AsyncVisionLoopRunner runner = new AsyncVisionLoopRunner(this, threadName, condition);
-        runner.start();
-        return runner;
-    }
-
-    /**
-     * Runs the loop asynchronously on a new thread without a stopping condition.
-     *
-     * @return an AsyncVisionLoopRunner managing the asynchronous loop
-     */
-    public AsyncVisionLoopRunner runAsync() {
-        return runAsyncWhile(() -> true);
-    }
-
-    /**
-     * Runs the loop asynchronously with a specified thread name and no stopping condition.
-     *
-     * @param threadName the name of the thread for the async loop
-     * @return an AsyncVisionLoopRunner managing the asynchronous loop
-     */
-    public AsyncVisionLoopRunner runAsync(String threadName) {
-        return runAsyncWhile(threadName, () -> true);
+    public AsyncVisionLoop toAsync() {
+        return toAsync(Integer.toHexString(hashCode()));
     }
 
     // BUILDER METHODS
@@ -383,6 +377,17 @@ public class VisionLoop implements Runnable, AutoCloseable {
         public FinalBuilder streamTo(Receiver... receivers) {
             this.receivers.addAll(Arrays.asList(receivers));
             return new FinalBuilder(this);
+        }
+
+        /**
+         * Creates a {@link SwingViewportReceiver} as the receiver and opens a live view window.
+         * This method sets up a window to display processed frames in real-time.
+         *
+         * @param title The title of the live view window.
+         * @return A FinalBuilder instance for finalizing the configuration.
+         */
+        public FinalBuilder withLiveView(String title) {
+            return streamTo(new SwingViewportReceiver(title, new Size(640, 480)));
         }
 
         /**

@@ -92,6 +92,7 @@ public class SwingViewportReceiver extends JFrame implements Receiver {
             setBackground(Color.BLACK);
             setSize((int) size.width, (int) size.width);
             setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            setLocationRelativeTo(null);
             setVisible(true);
 
             viewport.setRenderHook(new ReceiverRenderHook(processors));
