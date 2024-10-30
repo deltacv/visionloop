@@ -62,6 +62,40 @@ public class SwingViewportReceiver extends JFrame implements Receiver {
         }
     }
 
+    @Override
+    public void close() {
+        final Object closeLock = new Object();
+
+        SwingUtilities.invokeLater(() -> {
+            synchronized (closeLock) {
+                if(viewport != null) {
+                    viewport.clearViewport();
+                    viewport.deactivate();
+                    viewport.setRenderHook(new NoOpRenderHook());
+                    viewport = null;
+                }
+
+                dispose();
+
+                closeLock.notifyAll();
+            }
+        });
+
+        synchronized (closeLock) {
+            try {
+                closeLock.wait();
+            } catch (InterruptedException ignored) {
+            }
+        }
+    }
+
+    private static class NoOpRenderHook implements OpenCvViewport.RenderHook {
+
+        @Override
+        public void onDrawFrame(Canvas canvas, int onscreenWidth, int onscreenHeight, float scaleBmpPxToCanvasPx, float canvasDensityScale, Object userContext) {
+        }
+    }
+
     private static class ReceiverRenderHook implements OpenCvViewport.RenderHook {
 
         private final Processor[] processors;

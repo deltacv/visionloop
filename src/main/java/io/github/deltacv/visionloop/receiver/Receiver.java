@@ -7,4 +7,5 @@ public interface Receiver {
     void init(Processor[] processors);
     void take(Mat frame);
     void notifyStatistics(float fps, int pipelineMs, int overheadMs);
+    void close();
 }
