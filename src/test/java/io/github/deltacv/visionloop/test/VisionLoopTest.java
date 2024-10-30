@@ -6,18 +6,15 @@ import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 import org.junit.jupiter.api.Test;
 
 public class VisionLoopTest {
-
     @Test
-    public void test() throws InterruptedException {
-        VisionLoop loop = VisionLoop.withWebcamIndex(0)
+    public void test() {
+        VisionLoop loop = VisionLoop.withImage("/ug_4.jpg", 0.1)
                 .then(AprilTagProcessor.easyCreateWithDefaults())
+                .onViewportTapped(() -> System.out.println("Tapped!"))
                 .withLiveView()
                 .build();
 
         AsyncVisionLoopRunner runner = loop.runAsync();
-
-        Thread.sleep(25000);
-
-        runner.stop();
+        runner.join();
     }
 }

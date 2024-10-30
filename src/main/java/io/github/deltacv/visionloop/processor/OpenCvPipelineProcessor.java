@@ -34,6 +34,11 @@ public class OpenCvPipelineProcessor implements Processor {
     }
 
     @Override
+    public void onViewportTapped() {
+        pipeline.onViewportTapped();
+    }
+
+    @Override
     public void drawFrame(Canvas canvas, int onscreenWidth, int onscreenHeight, float scaleBmpPxToCanvasPx, float scaleCanvasDensity) {
         Object userCtx = pipeline.getUserContextForDrawHook();
 

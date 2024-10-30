@@ -1,50 +1,44 @@
 package io.github.deltacv.visionloop;
 
-import org.firstinspires.ftc.robotcore.internal.collections.EvictingBlockingQueue;
-
 import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 
 public class AsyncVisionLoopRunner {
 
-    public final VisionLoop loop;
+    private final VisionLoop loop;
 
     private final ArrayDeque<Runnable> submitQueue = new ArrayDeque<>();
-    private final ArrayList<Runnable> joinQueue = new ArrayList<>();
+
+    private final ArrayDeque<Throwable> exceptions = new ArrayDeque<>();
 
     private Thread visionThread;
 
     private final Object haltLock = new Object();
 
-    public AsyncVisionLoopRunner(VisionLoop loop, String name) {
+    public AsyncVisionLoopRunner(VisionLoop loop, String name, BooleanSupplier condition) {
         this.loop = loop;
 
         visionThread = new Thread(() -> {
-            try {
-                while (!Thread.interrupted()) {
+            try (loop) {
+                while (!Thread.interrupted() && condition.getAsBoolean()) {
                     loop.run();
 
                     while (!submitQueue.isEmpty()) {
                         submitQueue.poll().run();
                     }
-
-                    synchronized (joinQueue) {
-                        for (Runnable runnable : joinQueue) {
-                            runnable.run();
-                        }
-                    }
                 }
             } catch (Exception e) {
-                if(!(e instanceof InterruptedException)) {
+                if (!(e instanceof InterruptedException)) {
+                    synchronized (exceptions) {
+                        exceptions.add(e);
+                    }
                     throw e;
                 }
+            } finally {
+                synchronized (haltLock) {
+                    haltLock.notifyAll();
+                }
             }
-
-            loop.close();
         }, "VisionLoop-"+name);
     }
 
@@ -62,9 +56,12 @@ public class AsyncVisionLoopRunner {
         }
     }
 
-    public void joinWith(Runnable runnable) {
-        synchronized (joinQueue) {
-            joinQueue.add(runnable);
+    public void joinQuietly() {
+        synchronized (haltLock) {
+            try {
+                haltLock.wait();
+            } catch (InterruptedException ignored) {
+            }
         }
     }
 
@@ -75,10 +72,34 @@ public class AsyncVisionLoopRunner {
             } catch (InterruptedException ignored) {
             }
         }
+
+        if(hasExceptions()) {
+            throw new RuntimeException("Vision loop threw an exception", pollException());
+        }
     }
 
-    public void stop() {
+    public void interrupt() {
         visionThread.interrupt();
+    }
+
+    public Throwable pollException() {
+        synchronized (exceptions) {
+            return exceptions.poll();
+        }
+    }
+
+    public boolean isAlive() {
+        return visionThread.isAlive();
+    }
+
+    public boolean hasExceptions() {
+        synchronized (exceptions) {
+            return !exceptions.isEmpty();
+        }
+    }
+
+    public VisionLoop getLoop() {
+        return loop;
     }
 
 }

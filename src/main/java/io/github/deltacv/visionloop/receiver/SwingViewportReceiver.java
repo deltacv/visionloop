@@ -9,11 +9,15 @@ import org.openftc.easyopencv.OpenCvViewport;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+import java.util.ArrayDeque;
 
 public class SwingViewportReceiver extends JFrame implements Receiver {
 
     private SwingOpenCvViewport viewport;
     private final Size size;
+    private final ArrayDeque<Boolean> viewportTapped = new ArrayDeque<>();
 
     public SwingViewportReceiver(String title, Size size) {
         super(title);
@@ -38,6 +42,25 @@ public class SwingViewportReceiver extends JFrame implements Receiver {
 
             add(skiaPanel);
 
+            viewport.getComponent().addMouseListener(new MouseListener() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    synchronized (viewportTapped) {
+                        viewportTapped.add(true);
+                    }
+                }
+
+                @Override
+                public void mousePressed(MouseEvent e) {}
+
+                @Override
+                public void mouseReleased(MouseEvent e) { }
+                @Override
+                public void mouseEntered(MouseEvent e) { }
+                @Override
+                public void mouseExited(MouseEvent e) { }
+            });
+
             setBackground(Color.BLACK);
             setSize((int) size.width, (int) size.width);
             setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -53,6 +76,13 @@ public class SwingViewportReceiver extends JFrame implements Receiver {
     public void take(Mat frame) {
         if(viewport != null && frame != null)
             viewport.post(frame, new Object());
+    }
+
+    @Override
+    public boolean pollViewportTapped() {
+        synchronized (viewportTapped) {
+            return Boolean.TRUE.equals(viewportTapped.poll());
+        }
     }
 
     @Override
