@@ -2,19 +2,29 @@ package io.github.deltacv.visionloop.receiver;
 
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import io.github.deltacv.common.image.MatPoster;
+import io.github.deltacv.steve.util.EvictingBlockingQueue;
 import io.github.deltacv.visionloop.processor.Processor;
 import org.opencv.core.Mat;
 import org.opencv.core.Size;
+import org.openftc.easyopencv.MatRecycler;
 import org.openftc.easyopencv.OpenCvViewRenderer;
 import org.openftc.easyopencv.OpenCvViewport;
+
+import java.util.concurrent.ArrayBlockingQueue;
 
 public abstract class CanvasViewportReceiver implements Receiver {
 
     private final OpenCvViewRenderer renderer;
     private Processor[] processors = null;
 
-    private final Canvas canvas;
     private final Bitmap bitmap;
+    private final Canvas canvas;
+
+    private final RenderThread renderThread = new RenderThread();
+
+    private final MatRecycler matRecycler = new MatRecycler(2);
+    private final EvictingBlockingQueue<MatRecycler.RecyclableMat> frames = new EvictingBlockingQueue<>(new ArrayBlockingQueue<>(2));
 
     private final OpenCvViewport.RenderHook renderHook = (canvas, onscreenWidth, onscreenHeight, scaleBmpPxToCanvasPx, canvasDensityScale, userContext) -> {
         if (processors != null) {
@@ -27,6 +37,8 @@ public abstract class CanvasViewportReceiver implements Receiver {
     public CanvasViewportReceiver(Size viewportSize, String descriptor) {
         renderer = new OpenCvViewRenderer(false, descriptor);
 
+        frames.setEvictAction(MatRecycler.RecyclableMat::returnMat);
+
         if(descriptor == null) {
             renderer.setFpsMeterEnabled(false);
         }
@@ -38,12 +50,19 @@ public abstract class CanvasViewportReceiver implements Receiver {
     @Override
     public void init(Processor[] processors) {
         this.processors = processors;
+        renderThread.start();
     }
 
     @Override
     public void take(Mat frame) {
-        renderer.render(frame, canvas, renderHook, null);
-        afterRender(bitmap);
+        try {
+            MatRecycler.RecyclableMat recyclableMat = matRecycler.takeMatOrInterrupt();
+
+            frame.copyTo(recyclableMat);
+            frames.add(recyclableMat);
+        } catch (InterruptedException ignored) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     @Override
@@ -54,4 +73,32 @@ public abstract class CanvasViewportReceiver implements Receiver {
     }
 
     abstract void afterRender(Bitmap bitmap);
+
+    @Override
+    public void close() {
+        renderThread.interrupt();
+        matRecycler.releaseAll();
+    }
+
+    private class RenderThread extends Thread {
+
+        private RenderThread() {
+            super("CanvasViewportReceiver-RenderThread-" + CanvasViewportReceiver.this.hashCode());
+        }
+
+        @Override
+        public void run() {
+            while (!Thread.interrupted()) {
+                MatRecycler.RecyclableMat frame = frames.poll();
+                if (frame == null) {
+                    continue;
+                }
+
+                renderer.render(frame, canvas, renderHook, null);
+                afterRender(bitmap);
+
+                frame.returnMat();
+            }
+        }
+    }
 }

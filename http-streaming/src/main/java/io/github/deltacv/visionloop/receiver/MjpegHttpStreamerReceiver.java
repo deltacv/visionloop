@@ -120,6 +120,8 @@ public class MjpegHttpStreamerReceiver extends CanvasViewportReceiver {
 
     @Override
     public void close() {
+        super.close();
+
         // flush flush flush
         app.stop();
         frames.clear();
@@ -129,6 +131,10 @@ public class MjpegHttpStreamerReceiver extends CanvasViewportReceiver {
     }
 
     private class BitmapProcessingThread extends Thread {
+        private BitmapProcessingThread() {
+            super("BitmapProcessingThread-" + port);
+        }
+
         @Override
         public void run() {
             while (!Thread.interrupted()) {
@@ -168,7 +174,7 @@ public class MjpegHttpStreamerReceiver extends CanvasViewportReceiver {
     public static void main(String[] args) {
         VisionLoop visionLoop = VisionLoop.withWebcamIndex(0)
                 .then(AprilTagProcessor.easyCreateWithDefaults())
-                .streamTo(new MjpegHttpStreamerReceiver(8080, new Size(640, 480), "pepe"))
+                .streamTo(new MjpegHttpStreamerReceiver(8080, new Size(160, 120)))
                 .build();
 
         visionLoop.runBlocking();
