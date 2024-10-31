@@ -2,7 +2,6 @@ package io.github.deltacv.visionloop.receiver;
 
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import io.github.deltacv.common.image.MatPoster;
 import io.github.deltacv.steve.util.EvictingBlockingQueue;
 import io.github.deltacv.visionloop.processor.Processor;
 import org.opencv.core.Mat;
@@ -15,6 +14,8 @@ import java.util.concurrent.ArrayBlockingQueue;
 
 public abstract class CanvasViewportReceiver implements Receiver {
 
+    private static final int RENDER_QUEUE_SIZE = 2;
+
     private final OpenCvViewRenderer renderer;
     private Processor[] processors = null;
 
@@ -23,8 +24,8 @@ public abstract class CanvasViewportReceiver implements Receiver {
 
     private final RenderThread renderThread = new RenderThread();
 
-    private final MatRecycler matRecycler = new MatRecycler(2);
-    private final EvictingBlockingQueue<MatRecycler.RecyclableMat> frames = new EvictingBlockingQueue<>(new ArrayBlockingQueue<>(2));
+    private final MatRecycler matRecycler = new MatRecycler(RENDER_QUEUE_SIZE + 2);
+    private final EvictingBlockingQueue<MatRecycler.RecyclableMat> frames = new EvictingBlockingQueue<>(new ArrayBlockingQueue<>(RENDER_QUEUE_SIZE));
 
     private final OpenCvViewport.RenderHook renderHook = (canvas, onscreenWidth, onscreenHeight, scaleBmpPxToCanvasPx, canvasDensityScale, userContext) -> {
         if (processors != null) {

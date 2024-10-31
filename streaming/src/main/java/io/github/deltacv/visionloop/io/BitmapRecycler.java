@@ -5,6 +5,7 @@ import io.github.deltacv.steve.util.EvictingBlockingQueue;
 
 import java.util.concurrent.ArrayBlockingQueue;
 
+@SuppressWarnings("unused")
 public class BitmapRecycler {
 
     private final EvictingBlockingQueue<Bitmap> bitmaps;

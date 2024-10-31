@@ -7,10 +7,6 @@ apply from: '../build.common.gradle'
 group = 'com.github.deltacv'
 version = '1.0.0'
 
-ext {
-    skiko_version = "0.8.15"
-}
-
 repositories {
     mavenCentral()
     maven { url "https://jitpack.io" }
@@ -24,4 +20,12 @@ dependencies {
     implementation("io.javalin:javalin:6.3.0")
 
     compileOnly 'org.jetbrains.skiko:skiko-awt:0.8.15'
+
+    testImplementation platform('org.junit:junit-bom:5.10.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation "org.slf4j:slf4j-simple:2.0.16"
+}
+
+test {
+    useJUnitPlatform()
 }
