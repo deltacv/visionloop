@@ -22,6 +22,8 @@ import java.util.ArrayDeque;
 public class SwingViewportReceiver extends JFrame implements Receiver {
 
     private SwingOpenCvViewport viewport;
+    private final Boolean descriptorEnabled;
+
     private final Size size;
     private final ArrayDeque<Boolean> viewportTapped = new ArrayDeque<>();
 
@@ -31,9 +33,10 @@ public class SwingViewportReceiver extends JFrame implements Receiver {
      * @param title The title of the window.
      * @param size The size of the viewport.
      */
-    public SwingViewportReceiver(String title, Size size) {
+    public SwingViewportReceiver(String title, Size size, Boolean descriptorEnabled) {
         super(title);
         this.size = size;
+        this.descriptorEnabled = descriptorEnabled;
     }
 
     /**
@@ -41,9 +44,18 @@ public class SwingViewportReceiver extends JFrame implements Receiver {
      * default title.
      *
      * @param size The size of the viewport.
+     * @param fpsDescriptorEnabled Whether to display the FPS overlay.
+     */
+    public SwingViewportReceiver(Size size, boolean fpsDescriptorEnabled) {
+        this("deltacv VisionLoop", size, fpsDescriptorEnabled);
+    }
+
+    /**
+     * Constructs a {@code SwingViewportReceiver} with the specified size
+     * @param size The size of the viewport.
      */
     public SwingViewportReceiver(Size size) {
-        this("deltacv VisionLoop", size);
+        this(size, true);
     }
 
     /**
@@ -64,6 +76,10 @@ public class SwingViewportReceiver extends JFrame implements Receiver {
     public void init(Processor[] processors) {
         SwingUtilities.invokeLater(() -> {
             viewport = new SwingOpenCvViewport(size, getTitle());
+
+            if(!descriptorEnabled) {
+                viewport.getRenderer().setFpsMeterEnabled(false);
+            }
 
             JLayeredPane skiaPanel = viewport.skiaPanel();
             skiaPanel.setLayout(new BorderLayout());
@@ -177,7 +193,7 @@ public class SwingViewportReceiver extends JFrame implements Receiver {
      * A no-operation implementation of the {@link OpenCvViewport.RenderHook}
      * interface, used to clear the render hook when closing the viewport.
      */
-    private static class NoOpRenderHook implements OpenCvViewport.RenderHook {
+    static class NoOpRenderHook implements OpenCvViewport.RenderHook {
 
         @Override
         public void onDrawFrame(Canvas canvas, int onscreenWidth, int onscreenHeight, float scaleBmpPxToCanvasPx, float canvasDensityScale, Object userContext) {
@@ -188,7 +204,7 @@ public class SwingViewportReceiver extends JFrame implements Receiver {
      * A render hook implementation that draws frames processed by the given
      * processors onto the viewport.
      */
-    private static class ReceiverRenderHook implements OpenCvViewport.RenderHook {
+    static class ReceiverRenderHook implements OpenCvViewport.RenderHook {
 
         private final Processor[] processors;
 

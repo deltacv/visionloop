@@ -386,8 +386,8 @@ public class VisionLoop implements Runnable, AutoCloseable {
          * @param title The title of the live view window.
          * @return A FinalBuilder instance for finalizing the configuration.
          */
-        public FinalBuilder withLiveView(String title) {
-            return streamTo(new SwingViewportReceiver(title, new Size(640, 480)));
+        public FinalBuilder withLiveView(String title, boolean fpsDescriptorEnabled) {
+            return streamTo(new SwingViewportReceiver(title, new Size(640, 480), fpsDescriptorEnabled));
         }
 
         /**
@@ -398,8 +398,8 @@ public class VisionLoop implements Runnable, AutoCloseable {
          * @param size The dimensions of the live view window.
          * @return A FinalBuilder instance for finalizing the configuration.
          */
-        public FinalBuilder withLiveView(String title, Size size) {
-            return streamTo(new SwingViewportReceiver(title, size));
+        public FinalBuilder withLiveView(String title, Size size, boolean fpsDescriptorEnabled) {
+            return streamTo(new SwingViewportReceiver(title, size, fpsDescriptorEnabled));
         }
 
         /**
@@ -409,8 +409,8 @@ public class VisionLoop implements Runnable, AutoCloseable {
          * @param size The dimensions of the live view window.
          * @return A FinalBuilder instance for finalizing the configuration.
          */
-        public FinalBuilder withLiveView(Size size) {
-            return streamTo(new SwingViewportReceiver(size));
+        public FinalBuilder withLiveView(Size size, boolean fpsDescriptorEnabled) {
+            return streamTo(new SwingViewportReceiver(size, fpsDescriptorEnabled));
         }
 
         /**
@@ -419,8 +419,16 @@ public class VisionLoop implements Runnable, AutoCloseable {
          *
          * @return A FinalBuilder instance for finalizing the configuration.
          */
+        public FinalBuilder withLiveView(boolean fpsDescriptorEnabled) {
+            return withLiveView(new Size(640, 480), fpsDescriptorEnabled);
+        }
+
+        /**
+         * Creates a {@link SwingViewportReceiver} with a default size (640x480).
+         * @return A FinalBuilder instance for finalizing the configuration.
+         */
         public FinalBuilder withLiveView() {
-            return withLiveView(new Size(640, 480));
+            return withLiveView(true);
         }
 
         /**

@@ -3,11 +3,8 @@ plugins {
     id 'maven-publish'
 }
 
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(11)
-    }
-}
+// build.common.gradle include
+apply from: 'build.common.gradle'
 
 group = 'com.github.deltacv'
 version = '1.0.0'
@@ -41,6 +38,8 @@ repositories {
 dependencies {
     api 'com.github.deltacv.EOCV-Sim:Vision:3.8.1'
     api 'com.github.deltacv.EOCV-Sim:Common:3.8.1'
+
+    compileOnly 'org.jetbrains.skiko:skiko-awt:0.8.15'
 
     api 'com.github.deltacv:steve:1.1.1'
     api 'com.github.deltacv.steve:backend-openpnp:1.1.1'

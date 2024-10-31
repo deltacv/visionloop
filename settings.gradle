@@ -1,2 +1,3 @@
 rootProject.name = 'visionloop'
+include 'http-streaming'
 
