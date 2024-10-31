@@ -53,12 +53,16 @@ dependencies {
 
 ### Usage
 
+
+### VisionLoop implements the concepts of OpenFTC's OpenCvPipeline and VisionProcessor, allowing you to run them using the API. To learn how to use these interfaces, you may look into [EOCV-Sim's documentation here](https://deltacv.gitbook.io/eocv-sim/introduction/pipelines).
+
 Here’s a quick example of how to set up a vision loop with an image source and an AprilTag processor:
 
 ```java
 import io.github.deltacv.visionloop.AsyncVisionLoop;
 import io.github.deltacv.visionloop.VisionLoop;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
+
 public class VisionLoopShowcase {
     public static void main(String[] args) {
         VisionLoop loop = VisionLoop.withWebcamIndex(0)
