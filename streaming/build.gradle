@@ -1,8 +1,23 @@
 plugins {
     id 'java'
+    id 'maven-publish'
 }
 
 apply from: '../build.common.gradle'
+
+tasks.register('sourcesJar', Jar) {
+    from sourceSets.main.allJava
+    archiveClassifier = "sources"
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            artifact sourcesJar
+        }
+    }
+}
 
 group = 'com.github.deltacv'
 version = '1.0.0'

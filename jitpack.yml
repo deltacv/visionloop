@@ -3,4 +3,4 @@ jdk:
 before_install:
  - chmod +x gradlew
 install:
- - ./gradlew :build :publishToMavenLocal -x :test
+ - ./gradlew :build :publishToMavenLocal :streaming:publishToMavenLocal -x :test
