@@ -4,7 +4,6 @@ import android.annotation.Nullable;
 import io.github.deltacv.steve.Webcam;
 import io.github.deltacv.steve.WebcamBackend;
 import io.github.deltacv.steve.opencv.OpenCvWebcam;
-import io.github.deltacv.steve.opencv.OpenCvWebcamBackend;
 import io.github.deltacv.steve.openpnp.OpenPnpBackend;
 import io.github.deltacv.vision.external.util.Timestamped;
 import nu.pattern.OpenCV;
@@ -50,7 +49,7 @@ public class WebcamSource implements InputSource {
      *         the available webcams.
      */
     public static WebcamSource[] available() {
-        return available(OpenCvWebcamBackend.INSTANCE);
+        return available(OpenPnpBackend.INSTANCE);
     }
 
     /**

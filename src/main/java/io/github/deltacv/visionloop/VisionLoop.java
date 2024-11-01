@@ -4,6 +4,7 @@ import io.github.deltacv.common.pipeline.util.PipelineStatisticsCalculator;
 import io.github.deltacv.vision.external.util.Timestamped;
 import io.github.deltacv.visionloop.input.ImageSource;
 import io.github.deltacv.visionloop.input.InputSource;
+import io.github.deltacv.visionloop.input.VideoCaptureSource;
 import io.github.deltacv.visionloop.input.WebcamSource;
 import io.github.deltacv.visionloop.processor.OpenCvPipelineProcessor;
 import io.github.deltacv.visionloop.processor.Processor;
@@ -27,6 +28,7 @@ import java.util.function.BooleanSupplier;
  * This loop also supports frame hooks and viewport tapping detection.
  * Frames are processed, and statistics are updated and sent to receivers.
  */
+@SuppressWarnings("unused")
 public class VisionLoop implements Runnable, AutoCloseable {
 
     static {
@@ -208,6 +210,17 @@ public class VisionLoop implements Runnable, AutoCloseable {
     }
 
     // BUILDER METHODS
+
+    /**
+     * Begins the building process for a new VisionLoop with the specified input source.
+     * The path may refer to a video file or a video stream that can be opened by OpenCV.
+     *
+     * @param source the input source to use for frames
+     * @return a Builder to configure and build the VisionLoop
+     */
+    public static Builder with(String path) {
+        return new Builder(new VideoCaptureSource(path));
+    }
 
     /**
      * Begins the building process for a new VisionLoop with the specified input source.
