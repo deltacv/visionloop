@@ -117,9 +117,10 @@ public class MjpegHttpStreamerReceiver extends CanvasViewportReceiver {
         }
 
         // start javalin async
+        Handler finalHandler = handler;
         Executors.newSingleThreadExecutor().submit(() -> {
                 app = Javalin.create();
-                app.get("/", handler);
+                app.get("/", finalHandler);
                 app.start(port);
         });
     }
