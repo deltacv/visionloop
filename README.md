@@ -113,8 +113,6 @@ Make sure to add the dependency to your project as shown in the installation sec
 Here's an example of how to set up a vision loop with a webcam source and an AprilTag processor, and stream the processed image to a web server:
 
 ```java
-package io.github.deltacv.visionloop.rpi;
-
 import io.github.deltacv.visionloop.VisionLoop;
 import io.github.deltacv.visionloop.receiver.MjpegHttpStreamerReceiver;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;

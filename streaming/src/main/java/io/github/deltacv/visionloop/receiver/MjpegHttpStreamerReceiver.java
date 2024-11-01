@@ -1,11 +1,9 @@
 package io.github.deltacv.visionloop.receiver;
 
 import android.graphics.Bitmap;
-import io.github.deltacv.visionloop.VisionLoop;
 import io.github.deltacv.visionloop.processor.Processor;
 import io.javalin.Javalin;
 import org.firstinspires.ftc.robotcore.internal.collections.EvictingBlockingQueue;
-import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 import org.jetbrains.skia.impl.BufferUtil;
 import org.opencv.core.*;
 import org.opencv.imgcodecs.Imgcodecs;
