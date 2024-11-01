@@ -30,7 +30,8 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.github.deltacv:visionloop:1.0.0'
+    implementation 'com.github.deltacv:visionloop:1.1.0'
+    implementation 'com.github.deltacv.visionloop:streamer:1.1.0' // optional for streaming support
 }
 ```
 
@@ -47,6 +48,12 @@ dependencies {
 <dependency>
     <groupId>com.github.deltacv</groupId>
     <artifactId>visionloop</artifactId>
+    <version>1.0.0</version>
+</dependency>
+
+<dependency> <!-- optional for streaming support -->
+    <groupId>com.github.deltacv.visionloop</groupId>
+    <artifactId>streamer</artifactId>
     <version>1.0.0</version>
 </dependency>
 ```
@@ -97,3 +104,43 @@ VisionLoop loop = VisionLoop.withImage("path/to/image.jpg")
 ### Result
 
 ![img.png](assets/apriltag_result.png)
+
+
+## Using the Mjpeg Streamer
+
+Adding the additional "streamer" module to your project allows you to stream the processed image to a web server.<br>
+Make sure to add the dependency to your project as shown in the installation section.<br>
+Here's an example of how to set up a vision loop with a webcam source and an AprilTag processor, and stream the processed image to a web server:
+
+```java
+package io.github.deltacv.visionloop.rpi;
+
+import io.github.deltacv.visionloop.VisionLoop;
+import io.github.deltacv.visionloop.receiver.MjpegHttpStreamerReceiver;
+import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
+import org.opencv.core.Size;
+
+public class VisionLoopMjpegStreamShowcase {
+    public static void main(String[] args) {
+        var visionLoop = VisionLoop.withWebcamIndex(0)
+                .then(AprilTagProcessor.easyCreateWithDefaults())
+                // The MjpegHttpStreamerReceiver takes in a port and a size for the stream
+                .streamTo(new MjpegHttpStreamerReceiver(8080, new Size(640, 480)))
+                .build();
+
+        visionLoop.runBlocking();
+    }
+}
+```
+
+You can also add in an annotation name to the MjpegHttpStreamerReceiver constructor to display pipeline statistics
+
+```java
+new MjpegHttpStreamerReceiver(8080, new Size(640, 480), "AprilTag Processor") // Display pipeline statistics
+```
+
+### Result
+
+Open the web server in any browser at `http://localhost:8080` to view the stream.
+
+![img.png](assets/mjpeg_result.png)
