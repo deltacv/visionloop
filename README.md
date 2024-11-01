@@ -72,7 +72,7 @@ import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
 public class VisionLoopShowcase {
     public static void main(String[] args) {
-        VisionLoop loop = VisionLoop.withWebcamIndex(0)
+        var loop = VisionLoop.withWebcamIndex(0)
                 .then(AprilTagProcessor.easyCreateWithDefaults()) // Use an AprilTag processor to detect tags
                 .then((image) -> {
                     // Inline processing, image is a Timestamped<Mat> object.
@@ -134,7 +134,10 @@ public class VisionLoopMjpegStreamShowcase {
 You can also add in an annotation name to the MjpegHttpStreamerReceiver constructor to display pipeline statistics
 
 ```java
-new MjpegHttpStreamerReceiver(8080, new Size(640, 480), "AprilTag Processor") // Display pipeline statistics
+VisionLoop loop = ...
+        //...
+        .streamTo(new MjpegHttpStreamerReceiver(8080, new Size(640, 480), "AprilTag Processor"))
+        .build();
 ```
 
 ### Result
