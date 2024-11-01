@@ -108,15 +108,19 @@ public class MjpegHttpStreamerReceiver extends CanvasViewportReceiver {
         // the CanvasViewportReceiver will take care of calling drawFrame on each processor
         super.init(processors);
 
+        Handler handler = null;
+
+        try {
+            handler = getHandler();
+        } catch(Exception e) {
+            return;
+        }
+
         // start javalin async
         Executors.newSingleThreadExecutor().submit(() -> {
-            app = Javalin.create();
-            try {
-                app.get("/", getHandler());
+                app = Javalin.create();
+                app.get("/", handler);
                 app.start(port);
-            } catch(IllegalStateException ignored) {
-                // do nothing
-            }
         });
     }
 
