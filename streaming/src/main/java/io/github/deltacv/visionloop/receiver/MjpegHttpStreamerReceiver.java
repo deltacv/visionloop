@@ -3,6 +3,7 @@ package io.github.deltacv.visionloop.receiver;
 import android.graphics.Bitmap;
 import io.github.deltacv.visionloop.processor.Processor;
 import io.javalin.Javalin;
+import io.javalin.http.Handler;
 import org.firstinspires.ftc.robotcore.internal.collections.EvictingBlockingQueue;
 import org.jetbrains.skia.impl.BufferUtil;
 import org.opencv.core.*;
@@ -21,7 +22,9 @@ public class MjpegHttpStreamerReceiver extends CanvasViewportReceiver {
     private static final int QUEUE_SIZE = 3;
 
     private final int port;
-    private final Javalin app;
+    private Javalin app;
+
+    private boolean getHandlerCalled = false;
 
     private final EvictingBlockingQueue<MatRecycler.RecyclableMat> frames = new EvictingBlockingQueue<>(new ArrayBlockingQueue<>(QUEUE_SIZE));
     private final MatRecycler matRecycler = new MatRecycler(QUEUE_SIZE + 2);
@@ -36,53 +39,68 @@ public class MjpegHttpStreamerReceiver extends CanvasViewportReceiver {
 
         // the frame queue will automatically recycle the Mat objects
         frames.setEvictAction(MatRecycler.RecyclableMat::returnMat);
+    }
 
-        app = Javalin.create()
-                .get("/", ctx -> {
-                    // set the content type to multipart/x-mixed-replace
-                    ctx.contentType("multipart/x-mixed-replace; boundary=" + BOUNDARY);
+    /**
+     * Returns the handler for the Javalin server. This method can only be called once.
+     * Used by @{@link MjpegHttpStreamerReceiver#init(Processor[])} ()} to create a handler for the server.
+     * If the method is called more than once, an {@link IllegalStateException} will be thrown.
+     * If this is called by the user, {@link MjpegHttpStreamerReceiver#init(Processor[])} will not start the server.
+     *
+     * @return The handler for the Javalin server.
+     */
+    public Handler getHandler() {
+        if(getHandlerCalled) {
+            throw new IllegalStateException("getHandler can only be called once");
+        }
 
-                    // get the output stream
-                    OutputStream outputStream = ctx.res().getOutputStream();
+        getHandlerCalled = true;
 
-                    // reusable instances
-                    MatOfByte buf = new MatOfByte();
-                    byte[] bufArray = null;
+        return ctx -> {
+            // set the content type to multipart/x-mixed-replace
+            ctx.contentType("multipart/x-mixed-replace; boundary=" + BOUNDARY);
 
-                    while (!Thread.interrupted()) {
-                        // peek at the frame queue
-                        MatRecycler.RecyclableMat frame = frames.peek();
+            // get the output stream
+            OutputStream outputStream = ctx.res().getOutputStream();
 
-                        if (frame != null) {
-                            try {
-                                // actual JPEG encoding magic
-                                Imgcodecs.imencode(".jpg", frame, buf, new MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, 80));
+            // reusable instances
+            MatOfByte buf = new MatOfByte();
+            byte[] bufArray = null;
 
-                                var bytes = buf.rows() * buf.cols() * buf.channels();
+            while (!Thread.interrupted()) {
+                // peek at the frame queue
+                MatRecycler.RecyclableMat frame = frames.peek();
 
-                                if(bufArray == null || bufArray.length < bytes) {
-                                    // allocate a new buffer if the existing one is too small
-                                    bufArray = new byte[bytes];
-                                }
+                if (frame != null) {
+                    try {
+                        // actual JPEG encoding magic
+                        Imgcodecs.imencode(".jpg", frame, buf, new MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, 80));
 
-                                buf.get(0, 0, bufArray); // copy the data to the buffer
+                        var bytes = buf.rows() * buf.cols() * buf.channels();
 
-                                // write the JPEG data to the output stream
-                                outputStream.write(("--" + BOUNDARY + "\r\n").getBytes());
-                                outputStream.write("Content-Type: image/jpeg\r\n\r\n".getBytes());
-                                outputStream.write(bufArray);
-                                outputStream.write("\r\n\r\n".getBytes());
-
-                                // there it goes !
-                                outputStream.flush();
-
-                                // no need to recycle the Mat, as the frame queue will do it
-                            } catch (Exception e) {
-                                break;
-                            }
+                        if(bufArray == null || bufArray.length < bytes) {
+                            // allocate a new buffer if the existing one is too small
+                            bufArray = new byte[bytes];
                         }
+
+                        buf.get(0, 0, bufArray); // copy the data to the buffer
+
+                        // write the JPEG data to the output stream
+                        outputStream.write(("--" + BOUNDARY + "\r\n").getBytes());
+                        outputStream.write("Content-Type: image/jpeg\r\n\r\n".getBytes());
+                        outputStream.write(bufArray);
+                        outputStream.write("\r\n\r\n".getBytes());
+
+                        // there it goes !
+                        outputStream.flush();
+
+                        // no need to recycle the Mat, as the frame queue will do it
+                    } catch (Exception e) {
+                        break;
                     }
-                });
+                }
+            }
+        };
     }
 
     @Override
@@ -91,7 +109,15 @@ public class MjpegHttpStreamerReceiver extends CanvasViewportReceiver {
         super.init(processors);
 
         // start javalin async
-        Executors.newSingleThreadExecutor().submit(() -> app.start(port));
+        Executors.newSingleThreadExecutor().submit(() -> {
+            app = Javalin.create();
+            try {
+                app.get("/", getHandler());
+                app.start(port);
+            } catch(IllegalStateException ignored) {
+                // do nothing
+            }
+        });
     }
 
     @Override
@@ -131,7 +157,9 @@ public class MjpegHttpStreamerReceiver extends CanvasViewportReceiver {
         super.close();
 
         // flush flush flush
-        app.stop();
+        if(app != null) {
+            app.stop();
+        }
         frames.clear();
         matRecycler.releaseAll();
     }
