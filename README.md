@@ -30,7 +30,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.github.deltacv:visionloop:1.1.0'
+    implementation 'com.github.deltacv.visionloop:visionloop:1.1.0'
     implementation 'com.github.deltacv.visionloop:streamer:1.1.0' // optional for streaming support
 }
 ```
@@ -46,7 +46,7 @@ dependencies {
 </repositories>
 
 <dependency>
-    <groupId>com.github.deltacv</groupId>
+    <groupId>com.github.deltacv.visionloop</groupId>
     <artifactId>visionloop</artifactId>
     <version>1.0.0</version>
 </dependency>
