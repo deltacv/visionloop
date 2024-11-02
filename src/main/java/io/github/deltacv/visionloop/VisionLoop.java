@@ -35,7 +35,7 @@ public class VisionLoop implements Runnable, AutoCloseable {
         OpenCV.loadLocally();
     }
 
-    private final InputSource source;
+    private InputSource source;
     private final Processor[] processors;
     private final Receiver[] receivers;
     private final Runnable[] frameHooks;
@@ -153,6 +153,25 @@ public class VisionLoop implements Runnable, AutoCloseable {
             running = false;
             closed = true;
         }
+    }
+
+    /**
+     * Sets the input source for the VisionLoop.
+     * @param source the input source for video frames
+     * @return this VisionLoop instance for method chaining
+     */
+    public VisionLoop setSource(InputSource source) {
+        this.source = source;
+        return this;
+    }
+
+    /**
+     * Gets the current input source for the VisionLoop.
+     * @return the input source for video frames
+     * @see InputSource
+     */
+    public InputSource getSource() {
+        return source;
     }
 
     /**
