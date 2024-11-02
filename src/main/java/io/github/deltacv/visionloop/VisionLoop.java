@@ -97,8 +97,7 @@ public class VisionLoop implements Runnable, AutoCloseable {
                     processor.init(frame);
                 }
 
-                processor.processFrame(frame);
-                frame = new Timestamped<>(frame.getValue(), frame.getTimestamp());
+                frame = new Timestamped<>(processor.processFrame(frame), frame.getTimestamp());
             }
 
             statisticsCalculator.afterProcessFrame();
@@ -215,7 +214,6 @@ public class VisionLoop implements Runnable, AutoCloseable {
      * Begins the building process for a new VisionLoop with the specified input source.
      * The path may refer to a video file or a video stream that can be opened by OpenCV.
      *
-     * @param source the input source to use for frames
      * @return a Builder to configure and build the VisionLoop
      */
     public static Builder with(String path) {
