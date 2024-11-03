@@ -87,7 +87,7 @@ public class MjpegHttpStreamerReceiver extends CanvasViewportReceiver {
 
                         // write the JPEG data to the output stream
                         outputStream.write(("--" + BOUNDARY + "\r\n").getBytes());
-                        outputStream.write("Content-Type: image/jpeg\r\n\r\n".getBytes());
+                        outputStream.write("Content-Type: image/jpeg\r\n".getBytes());
                         outputStream.write(("Content-Length: " + contentLength + "\r\n\r\n").getBytes());
                         outputStream.write(bufArray);
                         outputStream.write("\r\n\r\n".getBytes());
