@@ -49,7 +49,7 @@ public class MjpegHttpStreamerReceiver extends CanvasViewportReceiver {
      *
      * @return The handler for the Javalin server.
      */
-    public Handler getHandler() {
+    public Handler takeHandler() {
         if(getHandlerCalled) {
             throw new IllegalStateException("getHandler can only be called once");
         }
@@ -76,11 +76,11 @@ public class MjpegHttpStreamerReceiver extends CanvasViewportReceiver {
                         // actual JPEG encoding magic
                         Imgcodecs.imencode(".jpg", frame, buf, new MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, 80));
 
-                        var bytes = buf.rows() * buf.cols() * buf.channels();
+                        var contentLength = (int) buf.total();
 
-                        if(bufArray == null || bufArray.length < bytes) {
+                        if(bufArray == null || bufArray.length < contentLength) {
                             // allocate a new buffer if the existing one is too small
-                            bufArray = new byte[bytes];
+                            bufArray = new byte[contentLength];
                         }
 
                         buf.get(0, 0, bufArray); // copy the data to the buffer
@@ -88,6 +88,7 @@ public class MjpegHttpStreamerReceiver extends CanvasViewportReceiver {
                         // write the JPEG data to the output stream
                         outputStream.write(("--" + BOUNDARY + "\r\n").getBytes());
                         outputStream.write("Content-Type: image/jpeg\r\n\r\n".getBytes());
+                        outputStream.write(("Content-Length: " + contentLength + "\r\n\r\n").getBytes());
                         outputStream.write(bufArray);
                         outputStream.write("\r\n\r\n".getBytes());
 
@@ -111,7 +112,7 @@ public class MjpegHttpStreamerReceiver extends CanvasViewportReceiver {
         Handler handler = null;
 
         try {
-            handler = getHandler();
+            handler = takeHandler();
         } catch(Exception e) {
             return;
         }
