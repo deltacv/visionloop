@@ -5,7 +5,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -110,13 +109,15 @@ public class MJpegHttpReader implements Iterable<byte[]> {
             this.hasNext = true;
         }
 
+        private final StringBuilder lineBuffer = new StringBuilder();
+
         private String readLine() throws IOException {
-            ByteArrayOutputStream lineBuffer = new ByteArrayOutputStream();
+            lineBuffer.setLength(0);  // Clear the buffer for reuse
             int nextByte;
 
             while ((nextByte = stream.read()) != -1) {
                 if (nextByte == '\n') break;
-                if (nextByte != '\r') lineBuffer.write(nextByte);
+                if (nextByte != '\r') lineBuffer.append((char) nextByte);
             }
 
             return lineBuffer.toString().trim();
@@ -133,6 +134,9 @@ public class MJpegHttpReader implements Iterable<byte[]> {
             }
         }
 
+        StringBuilder keyBuilder = new StringBuilder();
+        StringBuilder valueBuilder = new StringBuilder();
+
         private Map<String, String> readHeaders() throws IOException {
             Map<String, String> headers = new HashMap<>();
 
@@ -140,10 +144,24 @@ public class MJpegHttpReader implements Iterable<byte[]> {
                 String line = readLine();
                 if (line.isEmpty()) break;
 
-                String[] parts = line.split(": ", 2);
-                if (parts.length == 2) {
-                    headers.put(parts[0].toLowerCase(), parts[1]);
+                keyBuilder.setLength(0);   // Clear the key builder
+                valueBuilder.setLength(0); // Clear the value builder
+                boolean isKey = true;
+
+                for (int i = 0; i < line.length(); i++) {
+                    char c = line.charAt(i);
+                    if (isKey && c == ':' && i + 1 < line.length() && line.charAt(i + 1) == ' ') {
+                        // Found the separator ": "
+                        isKey = false;
+                        i++; // Skip the space after ":"
+                    } else if (isKey) {
+                        keyBuilder.append(Character.toLowerCase(c)); // Build the key in lowercase
+                    } else {
+                        valueBuilder.append(c); // Build the value
+                    }
                 }
+
+                headers.put(keyBuilder.toString(), valueBuilder.toString());
             }
 
             return headers;
