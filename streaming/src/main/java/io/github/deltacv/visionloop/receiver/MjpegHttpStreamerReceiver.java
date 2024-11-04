@@ -33,6 +33,12 @@ import java.util.concurrent.Executors;
 public class MjpegHttpStreamerReceiver extends CanvasViewportReceiver {
 
     private static final String BOUNDARY = "frame";
+
+    private static final byte[] boundaryBytes = ("--" + BOUNDARY + "\r\n").getBytes();
+    private static final byte[] contentTypeBytes = "Content-Type: image/jpeg\r\n".getBytes();
+    private static final byte[] contentLengthBytes = ("Content-Length: ").getBytes();
+    private static final byte[] crlfBytes = "\r\n\r\n".getBytes();
+
     private static final int QUEUE_SIZE = 3;
 
     private final int port;
@@ -115,11 +121,13 @@ public class MjpegHttpStreamerReceiver extends CanvasViewportReceiver {
                         buf.get(0, 0, bufArray); // copy the data to the buffer
 
                         // write the JPEG data to the output stream
-                        outputStream.write(("--" + BOUNDARY + "\r\n").getBytes());
-                        outputStream.write("Content-Type: image/jpeg\r\n".getBytes());
-                        outputStream.write(("Content-Length: " + contentLength + "\r\n\r\n").getBytes());
+                        outputStream.write(boundaryBytes);
+                        outputStream.write(contentTypeBytes);
+                        outputStream.write(contentLengthBytes);
+                        outputStream.write(String.valueOf(contentLength).getBytes());
+                        outputStream.write(crlfBytes);
                         outputStream.write(bufArray);
-                        outputStream.write("\r\n\r\n".getBytes());
+                        outputStream.write(crlfBytes);
 
                         // there it goes !
                         outputStream.flush();

@@ -30,11 +30,10 @@ import java.util.Map;
  *   }
  *   </pre>
  *
- *
  * @author Arseny Kovalchuk<br/><a href="http://www.linkedin.com/in/arsenykovalchuk/">LinkedIn&reg; Profile</a><br>
  *
  * Adapted from <a href="https://github.com/arskov/multipart-x-mixed-replace-java-player/">a GitHub repo</a> by Arseny Kovalchuk<br>
- * All credits due to the original author. Adaptation made by deltacv.
+ * All credits due to the original author. Adaptation made by deltacv under the original MIT license.
  */
 public class MJpegHttpReader implements Iterable<byte[]> {
 
@@ -98,6 +97,8 @@ public class MJpegHttpReader implements Iterable<byte[]> {
         private final String boundary;
         private final InputStream stream;
         private boolean hasNext;
+
+        private byte[] frame;
 
         private Logger logger = LoggerFactory.getLogger(ImagesIterator.class);
 
@@ -170,17 +171,19 @@ public class MJpegHttpReader implements Iterable<byte[]> {
                         throw new IOException("Invalid content length", e);
                     }
 
-                    byte[] frameData = new byte[length];
+                    if(frame == null || frame.length < length) {
+                        frame = new byte[length];
+                    }
+
                     int bytesRead = 0;
 
                     while (bytesRead < length) {
-                        int read = stream.read(frameData, bytesRead, length - bytesRead);
+                        int read = stream.read(frame, bytesRead, length - bytesRead);
                         if (read == -1) throw new IOException("Unexpected end of stream");
                         bytesRead += read;
                     }
 
-                    return frameData;
-
+                    return frame;
                 } catch (IOException e) {
                     throw new RuntimeException("Failed to read MJPEG frame", e);
                 }
