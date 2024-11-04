@@ -34,7 +34,8 @@ import java.util.Map;
  * Adapted from <a href="https://github.com/arskov/multipart-x-mixed-replace-java-player/">a GitHub repo</a> by Arseny Kovalchuk<br>
  * All credits due to the original author. Adaptation made by deltacv under the original MIT license.
  */
-public class MJpegHttpReader implements Iterable<byte[]> {
+@SuppressWarnings("unused")
+public class MjpegHttpReader implements Iterable<byte[]> {
 
     private final static String MULTIPART_MIXED_REPLACE = "multipart/x-mixed-replace";
     private final static String BOUNDARY_PART = "boundary=";
@@ -45,11 +46,11 @@ public class MJpegHttpReader implements Iterable<byte[]> {
     private HttpURLConnection connection;
     private boolean connected = false;
 
-    public MJpegHttpReader(URL url) {
+    public MjpegHttpReader(URL url) {
         this.url = url;
     }
 
-    public MJpegHttpReader(String url) throws IOException {
+    public MjpegHttpReader(String url) throws IOException {
         this.url = new URL(url);
     }
 
@@ -91,7 +92,7 @@ public class MJpegHttpReader implements Iterable<byte[]> {
         }
     }
 
-    private class ImagesIterator implements Iterator<byte[]> {
+    private static class ImagesIterator implements Iterator<byte[]> {
 
         private final String boundary;
         private final InputStream stream;
@@ -99,7 +100,7 @@ public class MJpegHttpReader implements Iterable<byte[]> {
 
         private byte[] frame;
 
-        private Logger logger = LoggerFactory.getLogger(ImagesIterator.class);
+        private final Logger logger = LoggerFactory.getLogger(ImagesIterator.class);
 
         ImagesIterator(String boundaryPart, HttpURLConnection conn) throws IOException {
             this.boundary = boundaryPart.startsWith("--") ? boundaryPart : "--" + boundaryPart;
@@ -206,11 +207,6 @@ public class MJpegHttpReader implements Iterable<byte[]> {
                     throw new RuntimeException("Failed to read MJPEG frame", e);
                 }
             }
-        }
-
-        @Override
-        public void remove() {
-            throw new UnsupportedOperationException("remove");
         }
     }
 }
