@@ -31,7 +31,7 @@ repositories {
 
 dependencies {
     implementation 'com.github.deltacv.visionloop:visionloop:1.1.0'
-    implementation 'com.github.deltacv.visionloop:streamer:1.1.0' // optional for streaming support
+    implementation 'com.github.deltacv.visionloop:streaming:1.1.0' // optional for streaming support
 }
 ```
 
@@ -53,7 +53,7 @@ dependencies {
 
 <dependency> <!-- optional for streaming support -->
     <groupId>com.github.deltacv.visionloop</groupId>
-    <artifactId>streamer</artifactId>
+    <artifactId>streaming</artifactId>
     <version>1.0.0</version>
 </dependency>
 ```
@@ -108,7 +108,7 @@ VisionLoop loop = VisionLoop.withImage("path/to/image.jpg")
 
 ## Using the Mjpeg Streamer
 
-Adding the additional "streamer" module to your project allows you to stream the processed image to a web server.<br>
+Adding the additional "streaming" module to your project allows you to stream the processed image to a web server.<br>
 Make sure to add the dependency to your project as shown in the installation section.<br>
 Here's an example of how to set up a vision loop with a webcam source and an AprilTag processor, and stream the processed image to a web server:
 
