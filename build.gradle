@@ -35,8 +35,8 @@ repositories {
 }
 
 dependencies {
-    api 'com.github.deltacv.EOCV-Sim:Vision:3.8.2'
-    api 'com.github.deltacv.EOCV-Sim:Common:3.8.2'
+    api 'com.github.deltacv.EOCV-Sim:Vision:v3.8.2'
+    api 'com.github.deltacv.EOCV-Sim:Common:v3.8.2'
 
     compileOnly 'org.jetbrains.skiko:skiko-awt:0.8.15'
 
