@@ -21,6 +21,6 @@ jobs:
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.JRELEASER_MAVENCENTRAL_USERNAME }}
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.JRELEASER_MAVENCENTRAL_PASSWORD }}
           ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.JRELEASER_GPG_PASSPHRASE }}
-          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.JRELEASER_GPG_gSECRET_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.JRELEASER_GPG_SECRET_KEY }}
         run: |
           ./gradlew :publishToMavenCentral :streaming:publishToMavenCentral --no-configuration-cache -x test
