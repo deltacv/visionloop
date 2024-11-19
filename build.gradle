@@ -1,47 +1,33 @@
 plugins {
     id 'java-library'
-    id 'maven-publish'
+    id 'signing'
+    id "com.vanniktech.maven.publish" version "0.30.0"
 }
 
 // build.common.gradle include
 apply from: 'build.common.gradle'
 
-group = 'com.github.deltacv'
-version = '1.2.0'
-
-tasks.register('sourcesJar', Jar) {
-    from sourceSets.main.allJava
-    archiveClassifier = "sources"
-}
-
-publishing {
-    publications {
-        mavenJava(MavenPublication) {
-            from components.java
-            artifact sourcesJar
-        }
-    }
+allprojects {
+    group = 'org.deltacv'
+    version = '1.2.2'
 }
 
 repositories {
     mavenCentral()
 
     google()
-
     maven { url "https://jitpack.io" }
-    maven { url 'https://maven.openimaj.org/' }
-    maven { url 'https://maven.ecs.soton.ac.uk/content/repositories/thirdparty/' }
     maven { url "https://maven.pkg.jetbrains.space/public/p/compose/dev" }
 }
 
 dependencies {
-    api 'com.github.deltacv.EOCV-Sim:Vision:3.8.2'
-    api 'com.github.deltacv.EOCV-Sim:Common:3.8.2'
+    api 'org.deltacv.EOCV-Sim:Vision:3.8.4'
+    api 'org.deltacv.EOCV-Sim:Common:3.8.4'
 
     compileOnly 'org.jetbrains.skiko:skiko-awt:0.8.15'
 
-    api 'com.github.deltacv:steve:1.1.1'
-    api 'com.github.deltacv.steve:backend-openpnp:1.1.1'
+    api 'org.deltacv.steve:core:1.1.3'
+    api 'org.deltacv.steve:backend-openpnp:1.1.3'
 
     testImplementation platform('org.junit:junit-bom:5.10.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
