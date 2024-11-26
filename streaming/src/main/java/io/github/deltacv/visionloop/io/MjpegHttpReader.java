@@ -16,20 +16,7 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Implementation of a connection to motion jpeg (multipart/x-mixed-replace) stream, and using it as an Itarable like this:
- *   <pre>
- *   public static void main(String... strings) {
- *       VideoSource src = new VideoSource("http://91.85.203.9/axis-cgi/mjpg/video.cgi");
- *       try {
- *           src.connect();
- *           for (byte[] img : src) {
- *               Files.write(Paths.get("c:/tmp/mjpeg/" + UUID.randomUUID().toString() + ".jpg"), img);
- *           }
- *       } catch (IOException e) {
- *           e.printStackTrace();
- *       }
- *   }
- *   </pre>
+ * Implementation of a connection to motion jpeg (multipart/x-mixed-replace) stream.
  *
  * @author Arseny Kovalchuk<br/><a href="http://www.linkedin.com/in/arsenykovalchuk/">LinkedIn&reg; Profile</a><br>
  *
