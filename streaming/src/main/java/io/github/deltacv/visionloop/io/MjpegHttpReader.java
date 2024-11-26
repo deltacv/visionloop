@@ -1,4 +1,4 @@
-package io.github.deltacv.visionloop.io;
+package io.github.deltacv.papervision.plugin.ipc.stream;
 
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -9,8 +9,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -94,78 +96,96 @@ public class MjpegHttpReader implements Iterable<byte[]> {
 
     private static class ImagesIterator implements Iterator<byte[]> {
 
-        private final String boundary;
+        private final byte[] boundary;
+        private final byte[] boundaryEnd;
         private final InputStream stream;
         private boolean hasNext;
 
         private byte[] frame;
 
-        private final Logger logger = LoggerFactory.getLogger(ImagesIterator.class);
+        private static final byte[] CRLF = {'\r', '\n'};
+        private static final byte[] COLON_SPACE = {':', ' '};
+        private static final Logger logger = LoggerFactory.getLogger(ImagesIterator.class);
 
         ImagesIterator(String boundaryPart, HttpURLConnection conn) throws IOException {
-            this.boundary = boundaryPart.startsWith("--") ? boundaryPart : "--" + boundaryPart;
-            logger.info("Boundary: {}", boundary);
+            this.boundary = ("--" + boundaryPart).getBytes(StandardCharsets.US_ASCII);
+            this.boundaryEnd = (new String(this.boundary) + "--").getBytes(StandardCharsets.US_ASCII);
+
+            logger.info("Boundary: {}", new String(boundary, StandardCharsets.US_ASCII));
 
             this.stream = new BufferedInputStream(conn.getInputStream(), 8192);
             this.hasNext = true;
         }
 
-        private final StringBuilder lineBuffer = new StringBuilder();
+        private final byte[] lineBuffer = new byte[8192];
+        private int lineLength;
 
-        private String readLine() throws IOException {
-            lineBuffer.setLength(0);  // Clear the buffer for reuse
+        private int readLine() throws IOException {
+            lineLength = 0;
+
             int nextByte;
-
             while ((nextByte = stream.read()) != -1) {
                 if (nextByte == '\n') break;
-                if (nextByte != '\r') lineBuffer.append((char) nextByte);
+                if (lineLength < lineBuffer.length) {
+                    if (nextByte != '\r') lineBuffer[lineLength++] = (byte) nextByte;
+                } else {
+                    throw new IOException("Line buffer overflow");
+                }
             }
 
-            return lineBuffer.toString().trim();
+            return lineLength;
         }
 
         private void readUntilBoundary() throws IOException {
             while (hasNext) {
-                String line = readLine();
-                if (line.equals(boundary)) break;
-                if (line.equals(boundary + "--")) {
+                int len = readLine();
+                if (len == boundary.length && matches(lineBuffer, len, boundary)) break;
+                if (len == boundaryEnd.length && matches(lineBuffer, len, boundaryEnd)) {
                     hasNext = false;
                     break;
                 }
             }
         }
 
-        StringBuilder keyBuilder = new StringBuilder();
-        StringBuilder valueBuilder = new StringBuilder();
+        private boolean matches(byte[] buffer, int len, byte[] toMatch) {
+            if (len != toMatch.length) return false;
+            for (int i = 0; i < len; i++) {
+                if (buffer[i] != toMatch[i]) return false;
+            }
+            return true;
+        }
 
         private Map<String, String> readHeaders() throws IOException {
             Map<String, String> headers = new HashMap<>();
 
             while (true) {
-                String line = readLine();
-                if (line.isEmpty()) break;
+                int len = readLine();
+                if (len == 0) break;
 
-                keyBuilder.setLength(0);   // Clear the key builder
-                valueBuilder.setLength(0); // Clear the value builder
-                boolean isKey = true;
+                int separatorIdx = indexOf(lineBuffer, len, COLON_SPACE);
+                if (separatorIdx == -1) continue;
 
-                for (int i = 0; i < line.length(); i++) {
-                    char c = line.charAt(i);
-                    if (isKey && c == ':' && i + 1 < line.length() && line.charAt(i + 1) == ' ') {
-                        // Found the separator ": "
-                        isKey = false;
-                        i++; // Skip the space after ":"
-                    } else if (isKey) {
-                        keyBuilder.append(Character.toLowerCase(c)); // Build the key in lowercase
-                    } else {
-                        valueBuilder.append(c); // Build the value
-                    }
-                }
+                String key = new String(lineBuffer, 0, separatorIdx, StandardCharsets.US_ASCII).toLowerCase(Locale.ROOT);
+                String value = new String(lineBuffer, separatorIdx + COLON_SPACE.length, len - separatorIdx - COLON_SPACE.length, StandardCharsets.US_ASCII);
 
-                headers.put(keyBuilder.toString(), valueBuilder.toString());
+                headers.put(key, value);
             }
 
             return headers;
+        }
+
+        private int indexOf(byte[] buffer, int len, byte[] toFind) {
+            for (int i = 0; i <= len - toFind.length; i++) {
+                boolean found = true;
+                for (int j = 0; j < toFind.length; j++) {
+                    if (buffer[i + j] != toFind[j]) {
+                        found = false;
+                        break;
+                    }
+                }
+                if (found) return i;
+            }
+            return -1;
         }
 
         @Override
@@ -181,7 +201,7 @@ public class MjpegHttpReader implements Iterable<byte[]> {
                 try {
                     readUntilBoundary();
                     Map<String, String> headers = readHeaders();
-                    String contentLengthHeader = headers.get(CONTENT_LENGTH_HEADER);
+                    String contentLengthHeader = headers.get("content-length");
 
                     int length;
                     try {
@@ -190,7 +210,7 @@ public class MjpegHttpReader implements Iterable<byte[]> {
                         throw new IOException("Invalid content length", e);
                     }
 
-                    if(frame == null || frame.length < length) {
+                    if (frame == null || frame.length < length) {
                         frame = new byte[length];
                     }
 
