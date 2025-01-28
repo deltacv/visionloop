@@ -9,20 +9,18 @@ apply from: 'build.common.gradle'
 
 allprojects {
     group = 'org.deltacv.visionloop'
-    version = '1.2.3'
+    version = '1.2.4'
 }
 
 repositories {
     mavenCentral()
-
     google()
-    maven { url "https://jitpack.io" }
     maven { url "https://maven.pkg.jetbrains.space/public/p/compose/dev" }
 }
 
 dependencies {
-    api 'org.deltacv.EOCV-Sim:Vision:3.8.4'
-    api 'org.deltacv.EOCV-Sim:Common:3.8.4'
+    api 'org.deltacv.EOCV-Sim:Vision:4.0.1'
+    api 'org.deltacv.EOCV-Sim:Common:4.0.1'
 
     compileOnly 'org.jetbrains.skiko:skiko-awt:0.8.15'
 
