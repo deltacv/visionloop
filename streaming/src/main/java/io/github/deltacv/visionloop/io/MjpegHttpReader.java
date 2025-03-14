@@ -1,4 +1,4 @@
-package io.github.deltacv.papervision.plugin.ipc.stream;
+package io.github.deltacv.visionloop.io;
 
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -110,6 +110,9 @@ public class MjpegHttpReader implements Iterable<byte[]> {
         private int readLine() throws IOException {
             lineLength = 0;
 
+            long startTime = System.currentTimeMillis();
+            long timeout = 3000; // 3 seconds
+
             int nextByte;
             while ((nextByte = stream.read()) != -1) {
                 if (nextByte == '\n') break;
@@ -117,6 +120,10 @@ public class MjpegHttpReader implements Iterable<byte[]> {
                     if (nextByte != '\r') lineBuffer[lineLength++] = (byte) nextByte;
                 } else {
                     throw new IOException("Line buffer overflow");
+                }
+
+                if(System.currentTimeMillis() - startTime > timeout) {
+                    throw new IOException("Timeout while reading line");
                 }
             }
 
@@ -203,7 +210,14 @@ public class MjpegHttpReader implements Iterable<byte[]> {
 
                     int bytesRead = 0;
 
+                    long startTime = System.currentTimeMillis();
+                    final long timeoutMs = 2000; // 2 seconds timeout
+
                     while (bytesRead < length) {
+                        if (System.currentTimeMillis() - startTime > timeoutMs) {
+                            throw new IOException("Timeout while reading MJPEG frame");
+                        }
+
                         int read = stream.read(frame, bytesRead, length - bytesRead);
                         if (read == -1) throw new IOException("Unexpected end of stream");
                         bytesRead += read;

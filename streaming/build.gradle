@@ -15,6 +15,7 @@ repositories {
     mavenCentral()
     maven { url "https://jitpack.io" }
     maven { url "https://maven.pkg.jetbrains.space/public/p/compose/dev" }
+    maven { url 'https://maven.scijava.org/content/repositories/public/' }
 }
 
 dependencies {
@@ -22,6 +23,7 @@ dependencies {
     implementation("io.javalin:javalin:6.3.0")
 
     compileOnly 'org.jetbrains.skiko:skiko-awt:0.8.15'
+    implementation 'ome:turbojpeg:8.0.0'
 
     testImplementation platform('org.junit:junit-bom:5.10.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'

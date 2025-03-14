@@ -8,8 +8,8 @@ import io.github.deltacv.visionloop.input.VideoCaptureSource;
 import io.github.deltacv.visionloop.input.WebcamSource;
 import io.github.deltacv.visionloop.processor.OpenCvPipelineProcessor;
 import io.github.deltacv.visionloop.processor.Processor;
-import io.github.deltacv.visionloop.receiver.Receiver;
-import io.github.deltacv.visionloop.receiver.SwingViewportReceiver;
+import io.github.deltacv.visionloop.sink.Sink;
+import io.github.deltacv.visionloop.sink.SwingViewportSink;
 import nu.pattern.OpenCV;
 import org.firstinspires.ftc.vision.VisionProcessor;
 import org.opencv.core.Mat;
@@ -23,7 +23,7 @@ import java.util.function.BooleanSupplier;
 /**
  * A VisionLoop represents a continuous loop for processing video frames
  * from an {@link InputSource}, passing them through a chain of {@link Processor}
- * instances, and sending them to one or more {@link Receiver} instances.
+ * instances, and sending them to one or more {@link Sink} instances.
  * <p>
  * This loop also supports frame hooks and viewport tapping detection.
  * Frames are processed, and statistics are updated and sent to receivers.
@@ -37,7 +37,7 @@ public class VisionLoop implements Runnable, AutoCloseable {
 
     private InputSource source;
     private final Processor[] processors;
-    private final Receiver[] receivers;
+    private final Sink[] sinks;
     private final Runnable[] frameHooks;
 
     private boolean hasBeenRunning = false;
@@ -56,13 +56,13 @@ public class VisionLoop implements Runnable, AutoCloseable {
      *
      * @param source the input source for video frames
      * @param processors an array of processors that will process each frame
-     * @param receivers an array of receivers to display or use processed frames
+     * @param sinks an array of receivers to display or use processed frames
      * @param frameHooks an array of hooks to run after each frame is processed
      */
-    private VisionLoop(InputSource source, Processor[] processors, Receiver[] receivers, Runnable[] frameHooks) {
+    private VisionLoop(InputSource source, Processor[] processors, Sink[] sinks, Runnable[] frameHooks) {
         this.source = source;
         this.processors = processors;
-        this.receivers = receivers;
+        this.sinks = sinks;
         this.frameHooks = frameHooks;
     }
 
@@ -104,15 +104,15 @@ public class VisionLoop implements Runnable, AutoCloseable {
 
             boolean viewportTapped = false;
 
-            for (Receiver receiver : receivers) {
+            for (Sink sink : sinks) {
                 if (!hasBeenRunning) {
-                    receiver.init(processors);
+                    sink.init(processors);
                 }
 
-                receiver.take(frame.getValue());
-                receiver.notifyStatistics(statisticsCalculator.getAvgFps(), statisticsCalculator.getAvgPipelineTime(), statisticsCalculator.getAvgOverheadTime());
+                sink.take(frame.getValue());
+                sink.notifyStatistics(statisticsCalculator.getAvgFps(), statisticsCalculator.getAvgPipelineTime(), statisticsCalculator.getAvgOverheadTime());
 
-                viewportTapped |= receiver.pollViewportTapped();
+                viewportTapped |= sink.pollViewportTapped();
             }
 
             if(viewportTapped) {
@@ -145,8 +145,8 @@ public class VisionLoop implements Runnable, AutoCloseable {
         }
 
         synchronized (loopLock) {
-            for (Receiver receiver : receivers) {
-                receiver.close();
+            for (Sink sink : sinks) {
+                sink.close();
             }
             source.close();
 
@@ -294,7 +294,7 @@ public class VisionLoop implements Runnable, AutoCloseable {
 
     /**
      * A Builder class to configure and construct instances of {@link VisionLoop}.
-     * This class allows adding various {@link Processor} instances, {@link Receiver}
+     * This class allows adding various {@link Processor} instances, {@link Sink}
      * instances, and frame hooks to the VisionLoop, enabling custom configurations
      * for the vision processing pipeline. This class supports method chaining for
      * convenient configuration setup.
@@ -302,7 +302,7 @@ public class VisionLoop implements Runnable, AutoCloseable {
     public static class Builder {
         private final InputSource source;
         private final ArrayList<Processor> processors = new ArrayList<>();
-        private final ArrayList<Receiver> receivers = new ArrayList<>();
+        private final ArrayList<Sink> sinks = new ArrayList<>();
         private final ArrayList<Runnable> frameHooks = new ArrayList<>();
 
         /**
@@ -398,30 +398,30 @@ public class VisionLoop implements Runnable, AutoCloseable {
         }
 
         /**
-         * Specifies one or more {@link Receiver} instances to receive processed frames.
+         * Specifies one or more {@link Sink} instances to receive processed frames.
          * Each receiver will get frames from the pipeline, useful for displaying or logging.
          *
-         * @param receivers The receivers to add to the VisionLoop.
+         * @param sinks The receivers to add to the VisionLoop.
          * @return A FinalBuilder instance for finalizing the configuration.
          */
-        public FinalBuilder streamTo(Receiver... receivers) {
-            this.receivers.addAll(Arrays.asList(receivers));
+        public FinalBuilder streamTo(Sink... sinks) {
+            this.sinks.addAll(Arrays.asList(sinks));
             return new FinalBuilder(this);
         }
 
         /**
-         * Creates a {@link SwingViewportReceiver} as the receiver and opens a live view window.
+         * Creates a {@link SwingViewportSink} as the receiver and opens a live view window.
          * This method sets up a window to display processed frames in real-time.
          *
          * @param title The title of the live view window.
          * @return A FinalBuilder instance for finalizing the configuration.
          */
         public FinalBuilder withLiveView(String title, boolean fpsDescriptorEnabled) {
-            return streamTo(new SwingViewportReceiver(title, new Size(640, 480), fpsDescriptorEnabled));
+            return streamTo(new SwingViewportSink(title, new Size(640, 480), fpsDescriptorEnabled));
         }
 
         /**
-         * Creates a {@link SwingViewportReceiver} as the receiver and opens a live view window.
+         * Creates a {@link SwingViewportSink} as the receiver and opens a live view window.
          * This method sets up a window to display processed frames in real-time.
          *
          * @param title The title of the live view window.
@@ -429,22 +429,22 @@ public class VisionLoop implements Runnable, AutoCloseable {
          * @return A FinalBuilder instance for finalizing the configuration.
          */
         public FinalBuilder withLiveView(String title, Size size, boolean fpsDescriptorEnabled) {
-            return streamTo(new SwingViewportReceiver(title, size, fpsDescriptorEnabled));
+            return streamTo(new SwingViewportSink(title, size, fpsDescriptorEnabled));
         }
 
         /**
-         * Creates a {@link SwingViewportReceiver} with the specified size.
+         * Creates a {@link SwingViewportSink} with the specified size.
          * Opens a live view window with the specified dimensions for real-time display.
          *
          * @param size The dimensions of the live view window.
          * @return A FinalBuilder instance for finalizing the configuration.
          */
         public FinalBuilder withLiveView(Size size, boolean fpsDescriptorEnabled) {
-            return streamTo(new SwingViewportReceiver(size, fpsDescriptorEnabled));
+            return streamTo(new SwingViewportSink(size, fpsDescriptorEnabled));
         }
 
         /**
-         * Creates a {@link SwingViewportReceiver} with a default size (640x480).
+         * Creates a {@link SwingViewportSink} with a default size (640x480).
          * Opens a default live view window for real-time display of processed frames.
          *
          * @return A FinalBuilder instance for finalizing the configuration.
@@ -454,7 +454,7 @@ public class VisionLoop implements Runnable, AutoCloseable {
         }
 
         /**
-         * Creates a {@link SwingViewportReceiver} with a default size (640x480).
+         * Creates a {@link SwingViewportSink} with a default size (640x480).
          * @return A FinalBuilder instance for finalizing the configuration.
          */
         public FinalBuilder withLiveView() {
@@ -472,14 +472,14 @@ public class VisionLoop implements Runnable, AutoCloseable {
          *   <li>The {@link InputSource} to provide frames for processing.</li>
          *   <li>An array of {@link Processor} instances that will perform
          *       various transformations or analyses on each frame.</li>
-         *   <li>An array of {@link Receiver} instances to handle processed
+         *   <li>An array of {@link Sink} instances to handle processed
          *       output data.</li>
          *   <li>Frame hooks as {@link Runnable} instances that will be
          *       executed in each loop iteration for additional operations.</li>
          * </ul>
          */
         public VisionLoop build() {
-            return new VisionLoop(source, processors.toArray(new Processor[0]), receivers.toArray(new Receiver[0]), frameHooks.toArray(new Runnable[0]));
+            return new VisionLoop(source, processors.toArray(new Processor[0]), sinks.toArray(new Sink[0]), frameHooks.toArray(new Runnable[0]));
         }
     }
 
@@ -521,11 +521,11 @@ public class VisionLoop implements Runnable, AutoCloseable {
          * <p>This allows for method chaining and further configuration before
          * building the final {@link VisionLoop} instance.</p>
          *
-         * @param receivers The receivers to which the VisionLoop will stream output.
+         * @param sinks The receivers to which the VisionLoop will stream output.
          * @return The current instance of {@link FinalBuilder} for method chaining.
          */
-        public FinalBuilder streamTo(Receiver... receivers) {
-            builder.streamTo(receivers);
+        public FinalBuilder streamTo(Sink... sinks) {
+            builder.streamTo(sinks);
             return this;
         }
 

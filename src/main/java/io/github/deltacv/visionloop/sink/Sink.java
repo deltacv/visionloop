@@ -1,4 +1,4 @@
-package io.github.deltacv.visionloop.receiver;
+package io.github.deltacv.visionloop.sink;
 
 import io.github.deltacv.visionloop.processor.Processor;
 import org.opencv.core.Mat;
@@ -12,7 +12,7 @@ import org.opencv.core.Mat;
  * <p>Implementing classes must define the behavior for managing frame
  * data, responding to viewport interactions, and tracking performance metrics.</p>
  */
-public interface Receiver {
+public interface Sink {
 
     /**
      * Initializes the receiver with the specified processors.

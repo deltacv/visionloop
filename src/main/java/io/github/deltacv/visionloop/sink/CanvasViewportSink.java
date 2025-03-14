@@ -1,4 +1,4 @@
-package io.github.deltacv.visionloop.receiver;
+package io.github.deltacv.visionloop.sink;
 
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -12,7 +12,7 @@ import org.openftc.easyopencv.OpenCvViewport;
 
 import java.util.concurrent.ArrayBlockingQueue;
 
-public abstract class CanvasViewportReceiver implements Receiver {
+public abstract class CanvasViewportSink implements Sink {
 
     private static final int RENDER_QUEUE_SIZE = 2;
 
@@ -35,7 +35,7 @@ public abstract class CanvasViewportReceiver implements Receiver {
         }
     };
 
-    public CanvasViewportReceiver(Size viewportSize, String descriptor) {
+    public CanvasViewportSink(Size viewportSize, String descriptor) {
         renderer = new OpenCvViewRenderer(false, descriptor);
 
         frames.setEvictAction(MatRecycler.RecyclableMat::returnMat);
@@ -84,7 +84,7 @@ public abstract class CanvasViewportReceiver implements Receiver {
     private class RenderThread extends Thread {
 
         private RenderThread() {
-            super("CanvasViewportReceiver-RenderThread-" + CanvasViewportReceiver.this.hashCode());
+            super("CanvasViewportReceiver-RenderThread-" + CanvasViewportSink.this.hashCode());
         }
 
         @Override

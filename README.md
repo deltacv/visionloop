@@ -114,7 +114,7 @@ Here's an example of how to set up a vision loop with a webcam source and an Apr
 
 ```java
 import io.github.deltacv.visionloop.VisionLoop;
-import io.github.deltacv.visionloop.receiver.MjpegHttpStreamerReceiver;
+import io.github.deltacv.visionloop.sink.MjpegHttpStreamSink;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 import org.opencv.core.Size;
 

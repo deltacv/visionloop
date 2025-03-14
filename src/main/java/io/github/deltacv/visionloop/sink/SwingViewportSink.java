@@ -1,4 +1,4 @@
-package io.github.deltacv.visionloop.receiver;
+package io.github.deltacv.visionloop.sink;
 
 import android.graphics.Canvas;
 import io.github.deltacv.vision.external.gui.SwingOpenCvViewport;
@@ -15,11 +15,11 @@ import java.util.ArrayDeque;
 
 /**
  * The {@code SwingViewportReceiver} class is a Swing-based implementation of the
- * {@link Receiver} interface that displays processed frames in a viewport using
+ * {@link Sink} interface that displays processed frames in a viewport using
  * Skiko. It allows user interactions, such as tapping on the viewport, and
  * visualizes statistics related to frame processing.
  */
-public class SwingViewportReceiver extends JFrame implements Receiver {
+public class SwingViewportSink extends JFrame implements Sink {
 
     private SwingOpenCvViewport viewport;
     private final Boolean descriptorEnabled;
@@ -33,7 +33,7 @@ public class SwingViewportReceiver extends JFrame implements Receiver {
      * @param title The title of the window.
      * @param size The size of the viewport.
      */
-    public SwingViewportReceiver(String title, Size size, Boolean descriptorEnabled) {
+    public SwingViewportSink(String title, Size size, Boolean descriptorEnabled) {
         super(title);
         this.size = size;
         this.descriptorEnabled = descriptorEnabled;
@@ -46,7 +46,7 @@ public class SwingViewportReceiver extends JFrame implements Receiver {
      * @param size The size of the viewport.
      * @param fpsDescriptorEnabled Whether to display the FPS overlay.
      */
-    public SwingViewportReceiver(Size size, boolean fpsDescriptorEnabled) {
+    public SwingViewportSink(Size size, boolean fpsDescriptorEnabled) {
         this("deltacv VisionLoop", size, fpsDescriptorEnabled);
     }
 
@@ -54,7 +54,7 @@ public class SwingViewportReceiver extends JFrame implements Receiver {
      * Constructs a {@code SwingViewportReceiver} with the specified size
      * @param size The size of the viewport.
      */
-    public SwingViewportReceiver(Size size) {
+    public SwingViewportSink(Size size) {
         this(size, true);
     }
 
@@ -62,7 +62,7 @@ public class SwingViewportReceiver extends JFrame implements Receiver {
      * Constructs a {@code SwingViewportReceiver} with a default size of 640x480
      * pixels and a default title.
      */
-    public SwingViewportReceiver() {
+    public SwingViewportSink() {
         this(new Size(640, 480));
     }
 
