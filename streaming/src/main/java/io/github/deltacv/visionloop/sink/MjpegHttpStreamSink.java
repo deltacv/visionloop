@@ -5,6 +5,7 @@ import io.github.deltacv.visionloop.processor.Processor;
 import io.github.deltacv.visionloop.tj.TJLoader;
 import io.javalin.Javalin;
 import io.javalin.http.Handler;
+import org.eclipse.jetty.io.EofException;
 import org.firstinspires.ftc.robotcore.internal.collections.EvictingBlockingQueue;
 import org.jetbrains.skia.impl.BufferUtil;
 import org.libjpegturbo.turbojpeg.TJ;
@@ -13,11 +14,14 @@ import org.opencv.core.*;
 import org.opencv.imgproc.Imgproc;
 import org.openftc.easyopencv.MatRecycler;
 
+import java.io.EOFException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.Executors;
+import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * A receiver that streams MJPEG video over HTTP.
@@ -41,7 +45,9 @@ public class MjpegHttpStreamSink extends CanvasViewportSink {
     private static final byte[] contentLengthBytes = ("Content-Length: ").getBytes();
     private static final byte[] crlfBytes = "\r\n\r\n".getBytes();
 
-    private static final int QUEUE_SIZE = 4;
+    private static final int QUEUE_SIZE = 5;
+    private static final int REUSABLE_BUFFER_QUEUE_SIZE = 10;
+    private static final int COMPRESSION_THREAD_POOL_SIZE = 4; // Number of threads for JPEG compression
 
     private final int port;
     private final int quality;
@@ -50,10 +56,32 @@ public class MjpegHttpStreamSink extends CanvasViewportSink {
     private volatile boolean getHandlerCalled = false;
 
     private final EvictingBlockingQueue<MatRecycler.RecyclableMat> frames = new EvictingBlockingQueue<>(new ArrayBlockingQueue<>(QUEUE_SIZE));
-    private final MatRecycler matRecycler = new MatRecycler(QUEUE_SIZE + 2);
+    private final MatRecycler matRecycler = new MatRecycler(QUEUE_SIZE + 4);
+
+    private final Map<Integer, Queue<byte[]>> reusableBuffers = new ConcurrentHashMap<>();
+
+    // Thread pool for JPEG compression
+    private final ExecutorService compressionThreadPool;
+
+    // Queue for compressed frames
+    private final BlockingQueue<CompressedFrame> compressedFrames = new ArrayBlockingQueue<>(QUEUE_SIZE);
+    private final AtomicBoolean isRunning = new AtomicBoolean(true);
 
     static {
         TJLoader.load();
+    }
+
+    /**
+     * Represents a compressed JPEG frame ready to be sent to clients
+     */
+    private static class CompressedFrame {
+        final byte[] data;
+        final int size;
+
+        CompressedFrame(byte[] data, int size) {
+            this.data = data;
+            this.size = size;
+        }
     }
 
     /**
@@ -77,8 +105,100 @@ public class MjpegHttpStreamSink extends CanvasViewportSink {
         this.quality = quality;
         this.port = port;
 
+        // Create fixed thread pool for compression
+        this.compressionThreadPool = Executors.newFixedThreadPool(COMPRESSION_THREAD_POOL_SIZE,
+                r -> {
+                    Thread t = new Thread(r, "JPEG-Compression-Thread");
+                    t.setDaemon(true);
+                    return t;
+                });
+
         // the frame queue will automatically recycle the Mat objects
-        frames.setEvictAction(MatRecycler.RecyclableMat::returnMat);
+        frames.setEvictAction(mat -> {
+            // Submit compression task when a new frame is available
+            submitCompressionTask(mat);
+            // Return the mat to the recycler
+            mat.returnMat();
+        });
+    }
+
+    /**
+     * Submits a compression task to the thread pool
+     * @param frame The frame to compress
+     */
+    private void submitCompressionTask(MatRecycler.RecyclableMat frame) {
+        if (!isRunning.get()) return;
+
+        MatRecycler.RecyclableMat frameCopy = matRecycler.takeMatOrNull();
+
+        if(frameCopy == null) {
+            return;
+        }
+
+        frame.copyTo(frameCopy);
+
+        compressionThreadPool.submit(() -> {
+            try {
+                // Create a copy of the frame data to work with
+                byte[] frameData = getOrCreateReusableBuffer((int) frame.total() * frame.channels());
+                frameCopy.get(0, 0, frameData);
+                frameCopy.returnMat();
+
+                TJCompressor compressor = new TJCompressor();
+                try {
+                    compressor.setJPEGQuality(quality);
+                    compressor.setSubsamp(TJ.SAMP_440);
+                    compressor.setSourceImage(frameData, frame.width(), 0, frame.height(), TJ.PF_BGR);
+
+                    byte[] buffer = getOrCreateReusableBuffer(2_000_000); // Pre-allocate buffer
+                    compressor.compress(buffer, TJ.FLAG_FASTDCT);
+
+                    returnReusableBuffer(frameData);
+
+                    int compressedSize = (int) compressor.getCompressedSize();
+
+                    // Add compressed frame to the output queue if we're still running
+                    if (isRunning.get()) {
+                        CompressedFrame compressedFrame = new CompressedFrame(buffer, compressedSize);
+                        compressedFrames.offer(compressedFrame, 100, TimeUnit.MILLISECONDS);
+                    }
+                } finally {
+                    compressor.close();
+                }
+            } catch (Exception e) {
+                if (isRunning.get()) {
+                    System.err.println("Error compressing frame: " + e.getMessage());
+                }
+            }
+        });
+    }
+
+
+    public void returnReusableBuffer(byte[] buffer) {
+        synchronized (reusableBuffers) {
+            Queue<byte[]> queue = reusableBuffers.get(buffer.length);
+            if (queue != null) {
+                queue.offer(buffer);
+            } else {
+                System.err.println("Buffer pool for size " + buffer.length + " is null");
+            }
+        }
+    }
+
+    public byte[] getOrCreateReusableBuffer(int size) {
+        synchronized (reusableBuffers) {
+            reusableBuffers.computeIfAbsent(size, k -> {
+                Queue<byte[]> queue = new ArrayBlockingQueue<>(REUSABLE_BUFFER_QUEUE_SIZE);
+                for (int i = 0; i < REUSABLE_BUFFER_QUEUE_SIZE; i++) {
+                    queue.offer(new byte[size]);
+                }
+                return queue;
+            });
+
+            Queue<byte[]> queue = reusableBuffers.get(size);
+            byte[] buffer = queue.poll();
+            return (buffer != null) ? buffer : new byte[size];
+        }
     }
 
     /**
@@ -95,7 +215,7 @@ public class MjpegHttpStreamSink extends CanvasViewportSink {
      */
     public Handler takeHandler() {
         if(getHandlerCalled) {
-            throw new IllegalStateException("getHandler can only be called once");
+            throw new IllegalStateException("takeHandler can only be called once. Has init() already been called?");
         }
 
         getHandlerCalled = true;
@@ -107,43 +227,17 @@ public class MjpegHttpStreamSink extends CanvasViewportSink {
             // get the output stream
             OutputStream outputStream = ctx.res().getOutputStream();
 
-            // reusable instances
-            byte[] frameArray = new byte[0];
-            HashMap<Integer, byte[]> bufMap = new HashMap<>();
-
-            byte[] bufArray = new byte[2_000_000];
-
             byte[] contentLengthNumberBytes = new byte[16];
             int lastContentLengthNumber = 0;
 
-            TJCompressor tj = new TJCompressor();
-            tj.setJPEGQuality(quality);
-            tj.setSubsamp(TJ.SAMP_440);
-
             try {
-                while (!Thread.interrupted()) {
-                    // peek at the frame queue
-                    MatRecycler.RecyclableMat frame = frames.peek();
+                while (!Thread.interrupted() && isRunning.get()) {
+                    // Get compressed frame from the queue
+                    CompressedFrame frame = compressedFrames.poll(500, TimeUnit.MILLISECONDS);
 
                     if (frame != null) {
                         try {
-                            if (frameArray.length < frame.total()) {
-                                // allocate a new buffer if the existing one is too small
-                                frameArray = new byte[(int) frame.width() * (int) frame.height() * 3];
-                                tj.setSourceImage(frameArray, frame.width(), 0, frame.height(), TJ.PF_BGR);
-                            }
-
-                            frame.get(0, 0, frameArray);
-
-                            if (bufArray.length < tj.getCompressedSize()) {
-                                // allocate a new buffer if the existing one is too small
-                                bufArray = new byte[(int) tj.getCompressedSize()];
-                            }
-
-                            // actual one-liner JPEG encoding magic
-                            tj.compress(bufArray, TJ.FLAG_FASTDCT);
-
-                            int contentLength = (int) tj.getCompressedSize();
+                            int contentLength = frame.size;
 
                             // Avoid string conversions: preallocate and reuse byte buffer
                             if (lastContentLengthNumber != contentLength) {
@@ -159,17 +253,21 @@ public class MjpegHttpStreamSink extends CanvasViewportSink {
                             outputStream.write(contentLengthBytes);
                             outputStream.write(contentLengthNumberBytes);
                             outputStream.write(crlfBytes);
-                            outputStream.write(bufArray, 0, contentLength);
+                            outputStream.write(frame.data, 0, contentLength);
 
                             outputStream.flush();
-                            // no need to recycle the Mat, as the frame queue will do it
+                        } catch (EOFException e) {
+                            // ignore
+                            break;
                         } catch (Exception e) {
                             throw new RuntimeException(e);
+                        } finally {
+                            returnReusableBuffer(frame.data);
                         }
                     }
                 }
-            } finally {
-                tj.close();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
         };
     }
@@ -241,13 +339,26 @@ public class MjpegHttpStreamSink extends CanvasViewportSink {
 
     @Override
     public void close() {
+        isRunning.set(false);
         super.close();
+
+        // Stop the compression thread pool
+        compressionThreadPool.shutdown();
+        try {
+            if (!compressionThreadPool.awaitTermination(500, TimeUnit.MILLISECONDS)) {
+                compressionThreadPool.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            compressionThreadPool.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
 
         // flush flush flush
         if(app != null) {
             app.stop();
         }
         frames.clear();
+        compressedFrames.clear();
         matRecycler.releaseAll();
     }
 }

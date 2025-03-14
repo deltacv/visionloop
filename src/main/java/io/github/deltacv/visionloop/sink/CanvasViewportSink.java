@@ -92,6 +92,7 @@ public abstract class CanvasViewportSink implements Sink {
             while (!Thread.interrupted()) {
                 MatRecycler.RecyclableMat frame = frames.poll();
                 if (frame == null) {
+                    Thread.yield();
                     continue;
                 }
 
