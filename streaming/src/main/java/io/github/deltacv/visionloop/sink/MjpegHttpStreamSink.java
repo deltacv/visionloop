@@ -50,7 +50,10 @@ public class MjpegHttpStreamSink extends CanvasViewportSink {
     private static final int COMPRESSION_THREAD_POOL_SIZE = 4; // Number of threads for JPEG compression
 
     private final int port;
-    private final int quality;
+
+    private final Object qualityLock = new Object();
+    private int quality;
+
     private Javalin app;
 
     private volatile boolean getHandlerCalled = false;
@@ -146,7 +149,10 @@ public class MjpegHttpStreamSink extends CanvasViewportSink {
 
                 TJCompressor compressor = new TJCompressor();
                 try {
-                    compressor.setJPEGQuality(quality);
+                    synchronized (qualityLock){
+                        compressor.setJPEGQuality(quality);
+                    }
+
                     compressor.setSubsamp(TJ.SAMP_440);
                     compressor.setSourceImage(frameData, frame.width(), 0, frame.height(), TJ.PF_BGR);
 
@@ -296,6 +302,20 @@ public class MjpegHttpStreamSink extends CanvasViewportSink {
     }
 
     /**
+     * Sets the JPEG compression quality of the stream.
+     * @param quality The quality of the JPEG stream, from 0 to 100.
+     */
+    public void setQuality(int quality) {
+        synchronized (qualityLock) {
+            if (quality < 0 || quality > 100) {
+                throw new IllegalArgumentException("Quality must be between 0 and 100");
+            }
+            this.quality = quality;
+        }
+    }
+
+
+    /**
      * Returns the port that the Javalin server is running on.
      * If the port was set to 0 in the constructor, this method will return the actual port that the server is running on.
      * If the server is not running, this method's return value will be undefined.
@@ -303,6 +323,16 @@ public class MjpegHttpStreamSink extends CanvasViewportSink {
      */
     public int getPort() {
         return app.port();
+    }
+
+    /**
+     * Gets the JPEG compression quality of the stream.
+     * @return The quality of the JPEG stream, from 0 to 100.
+     */
+    public int getQuality() {
+        synchronized (qualityLock) {
+            return quality;
+        }
     }
 
     @Override
