@@ -147,11 +147,11 @@ public class MjpegHttpStreamSink extends CanvasViewportSink {
                 JPEGCompressor compressor = MackJPEG.getSupportedBackend().makeCompressor();
 
                 try {
+                    compressor.setImage(frameData, frame.width(), frame.height(), PixelFormat.RGB);
+
                     synchronized (qualityLock){
                         compressor.setQuality(quality);
                     }
-
-                    compressor.setImage(frameData, frame.width(), frame.height(), PixelFormat.RGB);
 
                     byte[] buffer = getOrCreateReusableBuffer(2_000_000); // Pre-allocate buffer
                     compressor.compress(buffer);
@@ -170,7 +170,8 @@ public class MjpegHttpStreamSink extends CanvasViewportSink {
                 }
             } catch (Exception e) {
                 if (isRunning.get()) {
-                    System.err.println("Error compressing frame: " + e.getMessage());
+                    System.err.println("Error compressing frame:");
+                    e.printStackTrace();
                 }
             }
         });
@@ -350,7 +351,7 @@ public class MjpegHttpStreamSink extends CanvasViewportSink {
 
             // convert the raw pixel data to a Mat object
             Mat tmp = new Mat(bitmap.getHeight(), bitmap.getWidth(), CvType.CV_8UC2, buffer);
-            Imgproc.cvtColor(tmp, frame, Imgproc.COLOR_BGR5652BGR); // directly convert to BGR for MJPEG
+            Imgproc.cvtColor(tmp, frame, Imgproc.COLOR_BGR5652RGB); // directly convert to RGB for MJPEG
             tmp.release();
 
             frames.add(frame);
