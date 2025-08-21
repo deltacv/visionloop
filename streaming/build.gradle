@@ -13,17 +13,15 @@ tasks.register('sourcesJar', Jar) {
 
 repositories {
     mavenCentral()
-    maven { url "https://jitpack.io" }
     maven { url "https://maven.pkg.jetbrains.space/public/p/compose/dev" }
-    maven { url 'https://maven.scijava.org/content/repositories/public/' }
 }
 
 dependencies {
     compileOnly project(':')
-    implementation("io.javalin:javalin:6.3.0")
+    implementation("io.javalin:javalin:6.7.0")
 
     compileOnly 'org.jetbrains.skiko:skiko-awt:0.8.15'
-    implementation 'ome:turbojpeg:8.0.0'
+    implementation 'org.deltacv:mackjpeg:1.0.2'
 
     testImplementation platform('org.junit:junit-bom:5.10.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'

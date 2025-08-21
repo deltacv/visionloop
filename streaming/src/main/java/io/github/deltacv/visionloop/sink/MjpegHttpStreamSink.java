@@ -2,14 +2,15 @@ package io.github.deltacv.visionloop.sink;
 
 import android.graphics.Bitmap;
 import io.github.deltacv.visionloop.processor.Processor;
-import io.github.deltacv.visionloop.tj.TJLoader;
 import io.javalin.Javalin;
 import io.javalin.http.Handler;
+import org.deltacv.mackjpeg.JPEGCompressor;
+import org.deltacv.mackjpeg.MackJPEG;
+import org.deltacv.mackjpeg.PixelFormat;
+import org.deltacv.mackjpeg.turbojpeg.TurboJPEGBackend;
 import org.eclipse.jetty.io.EofException;
 import org.firstinspires.ftc.robotcore.internal.collections.EvictingBlockingQueue;
 import org.jetbrains.skia.impl.BufferUtil;
-import org.libjpegturbo.turbojpeg.TJ;
-import org.libjpegturbo.turbojpeg.TJCompressor;
 import org.opencv.core.*;
 import org.opencv.imgproc.Imgproc;
 import org.openftc.easyopencv.MatRecycler;
@@ -69,10 +70,6 @@ public class MjpegHttpStreamSink extends CanvasViewportSink {
     // Queue for compressed frames
     private final BlockingQueue<CompressedFrame> compressedFrames = new ArrayBlockingQueue<>(QUEUE_SIZE);
     private final AtomicBoolean isRunning = new AtomicBoolean(true);
-
-    static {
-        TJLoader.load();
-    }
 
     /**
      * Represents a compressed JPEG frame ready to be sent to clients
@@ -147,21 +144,21 @@ public class MjpegHttpStreamSink extends CanvasViewportSink {
                 frameCopy.get(0, 0, frameData);
                 frameCopy.returnMat();
 
-                TJCompressor compressor = new TJCompressor();
+                JPEGCompressor compressor = MackJPEG.getSupportedBackend().makeCompressor();
+
                 try {
                     synchronized (qualityLock){
-                        compressor.setJPEGQuality(quality);
+                        compressor.setQuality(quality);
                     }
 
-                    compressor.setSubsamp(TJ.SAMP_440);
-                    compressor.setSourceImage(frameData, frame.width(), 0, frame.height(), TJ.PF_BGR);
+                    compressor.setImage(frameData, frame.width(), frame.height(), PixelFormat.RGB);
 
                     byte[] buffer = getOrCreateReusableBuffer(2_000_000); // Pre-allocate buffer
-                    compressor.compress(buffer, TJ.FLAG_FASTDCT);
+                    compressor.compress(buffer);
 
                     returnReusableBuffer(frameData);
 
-                    int compressedSize = (int) compressor.getCompressedSize();
+                    int compressedSize = compressor.getCompressedSize();
 
                     // Add compressed frame to the output queue if we're still running
                     if (isRunning.get()) {
